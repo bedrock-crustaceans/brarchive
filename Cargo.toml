@@ -3,4 +3,12 @@ members = ["lib", "cli", "wasm"]
 resolver = "2"
 
 [profile.release]
-lto = true
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+incremental = false
+strip = "symbols"
+debug = false
+debug-assertions = false
+overflow-checks = true
