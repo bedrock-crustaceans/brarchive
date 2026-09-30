@@ -11,6 +11,12 @@ description = "CLI for Bedrock Archives in Rust"
 keywords = ["archive", "minecraft", "bedrock", "cli"]
 categories = ["data-structures", "parser-implementations", "command-line-utilities"]
 
+# The package is `brarchive-cli` (the plain `brarchive` name is the library), but
+# `cargo install brarchive-cli` puts a binary called `brarchive` on your PATH.
+[[bin]]
+name = "brarchive"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 brarchive = { workspace = true }

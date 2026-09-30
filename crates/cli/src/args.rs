@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug, Clone)]
-#[command(version, about, long_about = None)]
+#[command(name = "brarchive", version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct CliArgs {
     #[command(subcommand)]

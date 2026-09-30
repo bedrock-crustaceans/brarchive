@@ -1,4 +1,4 @@
-//! End-to-end tests that drive the real `brarchive-cli` binary against a
+//! End-to-end tests that drive the real `brarchive` binary against a
 //! miniature resource pack in `tests/fixtures/pack/`.
 //!
 //! The fixture mirrors how Mojang ships packs: loose files that were never
@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-const BIN: &str = env!("CARGO_BIN_EXE_brarchive-cli");
+const BIN: &str = env!("CARGO_BIN_EXE_brarchive");
 
 fn fixture_pack() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/pack")
@@ -142,7 +142,7 @@ fn run(args: &[&str]) -> Output {
     Command::new(BIN)
         .args(args)
         .output()
-        .expect("failed to spawn brarchive-cli")
+        .expect("failed to spawn brarchive")
 }
 
 fn output_text(out: &Output) -> String {

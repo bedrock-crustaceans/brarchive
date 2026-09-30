@@ -20,16 +20,16 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            binary: brarchive-cli
+            binary: brarchive
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            binary: brarchive-cli.exe
+            binary: brarchive.exe
           - target: x86_64-apple-darwin
             os: macos-15-intel
-            binary: brarchive-cli
+            binary: brarchive
           - target: aarch64-apple-darwin
             os: macos-15
-            binary: brarchive-cli
+            binary: brarchive
 
     steps:
       - uses: actions/checkout@v4
@@ -45,8 +45,8 @@ jobs:
         run: |
           VERSION=${GITHUB_REF_NAME#v}
           cp target/${{ matrix.target }}/release/${{ matrix.binary }} .
-          tar czf brarchive-cli-v${VERSION}-${{ matrix.target }}.tar.gz ${{ matrix.binary }}
-          echo "ASSET=brarchive-cli-v${VERSION}-${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
+          tar czf brarchive-v${VERSION}-${{ matrix.target }}.tar.gz ${{ matrix.binary }}
+          echo "ASSET=brarchive-v${VERSION}-${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -54,8 +54,8 @@ jobs:
         run: |
           $VERSION = $env:GITHUB_REF_NAME -replace '^v', ''
           Copy-Item "target/${{ matrix.target }}/release/${{ matrix.binary }}" .
-          Compress-Archive -Path "${{ matrix.binary }}" -DestinationPath "brarchive-cli-v${VERSION}-${{ matrix.target }}.zip"
-          echo "ASSET=brarchive-cli-v${VERSION}-${{ matrix.target }}.zip" | Out-File -Append $env:GITHUB_ENV
+          Compress-Archive -Path "${{ matrix.binary }}" -DestinationPath "brarchive-v${VERSION}-${{ matrix.target }}.zip"
+          echo "ASSET=brarchive-v${VERSION}-${{ matrix.target }}.zip" | Out-File -Append $env:GITHUB_ENV
 
       - uses: actions/upload-artifact@v4
         with:

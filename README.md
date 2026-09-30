@@ -2,7 +2,7 @@
 
 [![Crates.io Version](https://img.shields.io/crates/v/brarchive)](https://crates.io/crates/brarchive)
 [![Crates.io Total Downloads](https://img.shields.io/crates/d/brarchive)](https://crates.io/crates/brarchive)
-[![Crates.io MSRV (version)](https://img.shields.io/crates/msrv/brarchive/0.4.0)](https://crates.io/crates/brarchive)
+[![Crates.io MSRV (version)](https://img.shields.io/crates/msrv/brarchive/0.4.1)](https://crates.io/crates/brarchive)
 [![Crates.io License](https://img.shields.io/crates/l/brarchive)](https://github.com/theaddonn/brarchive-rs/blob/main/LICENSE)
 
 Library and CLI for the Bedrock Archive (`.brarchive`) format, the bundling format Mojang uses
@@ -61,6 +61,9 @@ Install the CLI from crates.io:
 cargo install brarchive-cli
 ```
 
+The package is called `brarchive-cli` (the plain `brarchive` name is the
+library), but the installed binary is just `brarchive`.
+
 Prebuilt binaries for Linux, macOS, and Windows are attached to every
 [GitHub release](https://github.com/theaddonn/brarchive-rs/releases) as well.
 
@@ -73,14 +76,14 @@ archives live under `__brarchive/`.
 Bundle a folder into one archive:
 
 ```shell
-brarchive-cli encode path/to/dir output.brarchive
+brarchive encode path/to/dir output.brarchive
 ```
 
 Walk a pack and mirror its directory tree into `__brarchive/`, writing one
 archive per folder:
 
 ```shell
-brarchive-cli encode path/to/pack --recursive
+brarchive encode path/to/pack --recursive
 ```
 
 Files in the top-level directory itself (`manifest.json`, `pack_icon.png`, and
@@ -89,14 +92,14 @@ so on) are bundled into `__brarchive/__root__.brarchive`, and `decode
 pass `--skip-root` if you want the same layout as a vanilla pack:
 
 ```shell
-brarchive-cli encode path/to/pack --recursive --skip-root
+brarchive encode path/to/pack --recursive --skip-root
 ```
 
 Add `--dedup` to store identical file contents only once, and `--delete-source`
 to remove the originals once the archive is written:
 
 ```shell
-brarchive-cli encode path/to/dir output.brarchive --dedup --delete-source
+brarchive encode path/to/dir output.brarchive --dedup --delete-source
 ```
 
 ### Decoding
@@ -104,13 +107,13 @@ brarchive-cli encode path/to/dir output.brarchive --dedup --delete-source
 Extract a single archive into a folder:
 
 ```shell
-brarchive-cli decode output.brarchive path/to/out/
+brarchive decode output.brarchive path/to/out/
 ```
 
 Extract every archive under a pack's `__brarchive/` folder in one go:
 
 ```shell
-brarchive-cli decode path/to/pack --recursive
+brarchive decode path/to/pack --recursive
 ```
 
 Each archive is unpacked into the directory its path under `__brarchive/`
@@ -122,7 +125,7 @@ that already exists, the decode stops before writing anything; pass
 a pack:
 
 ```shell
-brarchive-cli decode path/to/pack --recursive --overwrite
+brarchive decode path/to/pack --recursive --overwrite
 ```
 
 Mojang ships the JSON inside these archives minified, and by default the CLI
@@ -132,7 +135,7 @@ compiled binary MCB files Bedrock now embeds, are always written untouched so
 nothing gets corrupted:
 
 ```shell
-brarchive-cli decode output.brarchive path/to/out/ --pretty
+brarchive decode output.brarchive path/to/out/ --pretty
 ```
 
 `--delete-source` works here too and removes the archive after a successful
@@ -143,11 +146,11 @@ decode.
 Print the entry names in an archive without extracting anything:
 
 ```shell
-brarchive-cli list output.brarchive
+brarchive list output.brarchive
 ```
 
 Or list the contents of every archive in a pack:
 
 ```shell
-brarchive-cli list path/to/pack --recursive
+brarchive list path/to/pack --recursive
 ```

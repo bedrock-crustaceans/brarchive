@@ -5,7 +5,7 @@ resolver = "2"
 # Shared by every crate via `<field>.workspace = true`. Bump the version here
 # and all three crates (and the CLI's dependency on the lib) move together.
 [workspace.package]
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 rust-version = "1.81"
 authors = ["theaddonn <theaddonn@gmail.com>"]
@@ -13,7 +13,7 @@ repository = "https://github.com/bedrock-crustaceans/brarchive"
 license = "Apache-2.0"
 
 [workspace.dependencies]
-brarchive = { path = "crates/lib", version = "0.4.0" }
+brarchive = { path = "crates/lib", version = "0.4.1" }
 
 [profile.release]
 lto = true
