@@ -121,9 +121,9 @@ pub struct Entry<'a> {
 /// by [`entries`].
 #[derive(Debug, Clone)]
 pub struct Entries<'a> {
-    data: &'a [u8],
     descriptors: ChunksExact<'a, u8>,
     data_start: usize,
+    data_len: usize,
 }
 
 impl<'a> Iterator for Entries<'a> {
@@ -132,7 +132,7 @@ impl<'a> Iterator for Entries<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let descriptor = self.descriptors.next()?;
         Some(v1::read_entry_descriptor(descriptor).and_then(|entry| {
-            let range = v1::entry_contents_range(&entry, self.data_start, self.data.len())?;
+            let range = v1::entry_contents_range(&entry, self.data_start, self.data_len)?;
             Ok(Entry {
                 name: entry.name,
                 range,
@@ -172,9 +172,9 @@ pub fn entries(data: &[u8]) -> Result<Entries<'_>, BrArchiveError> {
     let header = v1::read_header(data)?;
     let (table, data_start) = v1::entry_table(data, &header)?;
     Ok(Entries {
-        data,
         descriptors: table.chunks_exact(v1::DESCRIPTOR_LEN),
         data_start,
+        data_len: data.len(),
     })
 }
 
