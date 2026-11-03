@@ -4,7 +4,7 @@
 // deno-fmt-ignore-file
 // @ts-self-types="./brarchive_wasm.d.ts"
 
-// source-hash: a944c16ab23ccb2913da900f973abf50385e2291
+// source-hash: 33d18f350594180d423d3684f2b7ab004df36d18
 import * as wasm from "./brarchive_wasm.wasm";
 export * from "./brarchive_wasm.internal.js";
 import { __wbg_set_wasm } from "./brarchive_wasm.internal.js";

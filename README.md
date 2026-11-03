@@ -2,7 +2,7 @@
 
 [![Crates.io Version](https://img.shields.io/crates/v/brarchive)](https://crates.io/crates/brarchive)
 [![Crates.io Total Downloads](https://img.shields.io/crates/d/brarchive)](https://crates.io/crates/brarchive)
-[![Crates.io MSRV (version)](https://img.shields.io/crates/msrv/brarchive/0.4.1)](https://crates.io/crates/brarchive)
+[![Crates.io MSRV (version)](https://img.shields.io/crates/msrv/brarchive/0.5.0)](https://crates.io/crates/brarchive)
 [![Crates.io License](https://img.shields.io/crates/l/brarchive)](https://github.com/theaddonn/brarchive-rs/blob/main/LICENSE)
 
 A library and CLI for the **Bedrock Archive** (`.brarchive`) format, the bundling format
@@ -175,8 +175,17 @@ brarchive list path/to/pack --recursive
 ```rust
 use std::collections::BTreeMap;
 
-// List entry names without reading any content
-let names: Vec<String> = brarchive::list(&bytes)?;
+// Walk the entries without copying: each one is a name and the byte range of its
+// contents in the archive, checked to lie inside it
+for entry in brarchive::entries(&bytes)? {
+    let entry = entry?;
+    let contents: &[u8] = &bytes[entry.range];
+}
+
+// Just the names
+let names = brarchive::entries(&bytes)?
+    .map(|entry| entry.map(|entry| entry.name))
+    .collect::<Result<Vec<&str>, _>>()?;
 
 // Deserialize into anything that implements FromIterator<(String, Vec<u8>)>.
 // Content comes back as raw bytes, since an archive can hold binary entries.

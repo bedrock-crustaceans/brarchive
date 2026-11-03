@@ -51,14 +51,15 @@ pub fn serialize(
 /// Decode `.brarchive` bytes into flat entries. See [`RawEntries`].
 #[wasm_bindgen]
 pub fn deserialize(data: &[u8]) -> Result<RawEntries, JsError> {
-    let entries: Vec<(String, Vec<u8>)> = brarchive::deserialize(data).map_err(err)?;
+    let entries = brarchive::entries(data).map_err(err)?;
     let mut names = Vec::with_capacity(entries.len());
     let mut lengths = Vec::with_capacity(entries.len());
     let mut flat = Vec::new();
-    for (name, content) in entries {
-        names.push(name);
-        lengths.push(content.len() as u32);
-        flat.extend_from_slice(&content);
+    for entry in entries {
+        let entry = entry.map_err(err)?;
+        names.push(entry.name.to_string());
+        lengths.push(entry.range.len() as u32);
+        flat.extend_from_slice(&data[entry.range]);
     }
     Ok(RawEntries {
         names,
@@ -70,5 +71,8 @@ pub fn deserialize(data: &[u8]) -> Result<RawEntries, JsError> {
 /// List entry names without decoding any content.
 #[wasm_bindgen]
 pub fn list(data: &[u8]) -> Result<Vec<String>, JsError> {
-    brarchive::list(data).map_err(err)
+    brarchive::entries(data)
+        .map_err(err)?
+        .map(|entry| entry.map(|entry| entry.name.to_string()).map_err(err))
+        .collect()
 }

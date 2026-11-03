@@ -2,7 +2,10 @@ use crate::error::BrArchiveError;
 use crate::versions::v1;
 use crate::versions::{ENTRY_NAME_LEN_MAX, MAGIC, VERSIONS};
 use byteorder::{LittleEndian, WriteBytesExt};
-use std::io::{Cursor, Write};
+use std::io::Write;
+use std::iter::FusedIterator;
+use std::ops::Range;
+use std::slice::ChunksExact;
 
 pub mod error;
 pub(crate) mod versions;
@@ -104,13 +107,75 @@ where
     Ok(buf)
 }
 
-/// List entry names in a .brarchive file without reading content.
-pub fn list(data: &[u8]) -> Result<Vec<String>, BrArchiveError> {
-    let mut buf = Cursor::new(data);
-    let header = v1::read_header(&mut buf)?;
-    (0..header.entries)
-        .map(|_| v1::read_entry_descriptor(&mut buf).map(|e| e.name.to_string()))
-        .collect()
+/// One entry of a .brarchive file: its name and where its contents sit in the
+/// archive bytes.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Entry<'a> {
+    /// The entry name, borrowed from the archive.
+    pub name: &'a str,
+    /// The byte range of the contents in the archive, checked to lie inside it.
+    pub range: Range<usize>,
+}
+
+/// Iterator over the entries of a .brarchive file, in archive order. Returned
+/// by [`entries`].
+#[derive(Debug, Clone)]
+pub struct Entries<'a> {
+    descriptors: ChunksExact<'a, u8>,
+    data_start: usize,
+    data_len: usize,
+}
+
+impl<'a> Iterator for Entries<'a> {
+    type Item = Result<Entry<'a>, BrArchiveError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let descriptor = self.descriptors.next()?;
+        Some(v1::read_entry_descriptor(descriptor).and_then(|entry| {
+            let range = v1::entry_contents_range(&entry, self.data_start, self.data_len)?;
+            Ok(Entry {
+                name: entry.name,
+                range,
+            })
+        }))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.descriptors.size_hint()
+    }
+}
+
+impl ExactSizeIterator for Entries<'_> {}
+
+impl FusedIterator for Entries<'_> {}
+
+/// Iterate over the entries of a .brarchive file without copying any content.
+///
+/// The header and the entry table are checked up front, so a truncated archive
+/// or one whose entry count runs past its end is an error here. Each entry is
+/// then checked on its own: a bad name or a content range past the end of
+/// `data` is an error item, and iteration carries on with the next entry.
+/// `&data[entry.range]` is the entry's contents.
+///
+/// ```rust
+/// # fn main() -> Result<(), brarchive::error::BrArchiveError> {
+/// let bytes = brarchive::serialize([("entity.json", "{}")])?;
+/// for entry in brarchive::entries(&bytes)? {
+///     let entry = entry?;
+///     assert_eq!(entry.name, "entity.json");
+///     assert_eq!(&bytes[entry.range], b"{}");
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub fn entries(data: &[u8]) -> Result<Entries<'_>, BrArchiveError> {
+    let header = v1::read_header(data)?;
+    let (table, data_start) = v1::entry_table(data, &header)?;
+    Ok(Entries {
+        descriptors: table.chunks_exact(v1::DESCRIPTOR_LEN),
+        data_start,
+        data_len: data.len(),
+    })
 }
 
 /// Deserialize a .brarchive file into any collection constructible from
@@ -133,17 +198,7 @@ pub fn deserialize<C>(data: &[u8]) -> Result<C, BrArchiveError>
 where
     C: FromIterator<(String, Vec<u8>)>,
 {
-    let mut buf = Cursor::new(data);
-    let header = v1::read_header(&mut buf)?;
-    let mut descriptors = Vec::with_capacity(header.entries as usize);
-    for _ in 0..header.entries {
-        descriptors.push(v1::read_entry_descriptor(&mut buf)?);
-    }
-    descriptors
-        .into_iter()
-        .map(|entry| {
-            let contents = v1::read_entry_contents(&mut buf, &entry)?;
-            Ok((entry.name.to_string(), contents))
-        })
+    entries(data)?
+        .map(|entry| entry.map(|entry| (entry.name.to_string(), data[entry.range].to_vec())))
         .collect()
 }

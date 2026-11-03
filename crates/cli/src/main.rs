@@ -409,12 +409,16 @@ fn list_single(path: &Path) {
         error!("Failed to read \"{}\": {}", path.display(), err);
         exit(1);
     });
-    let names = brarchive::list(&data).unwrap_or_else(|err| {
+    let entries = brarchive::entries(&data).unwrap_or_else(|err| {
         error!("Failed to list \"{}\": {}", path.display(), err);
         exit(1);
     });
-    for name in names {
-        println!("{}", name);
+    for entry in entries {
+        let entry = entry.unwrap_or_else(|err| {
+            error!("Failed to list \"{}\": {}", path.display(), err);
+            exit(1);
+        });
+        println!("{}", entry.name);
     }
 }
 
