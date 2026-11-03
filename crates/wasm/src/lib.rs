@@ -71,5 +71,8 @@ pub fn deserialize(data: &[u8]) -> Result<RawEntries, JsError> {
 /// List entry names without decoding any content.
 #[wasm_bindgen]
 pub fn list(data: &[u8]) -> Result<Vec<String>, JsError> {
-    brarchive::list(data).map_err(err)
+    brarchive::entries(data)
+        .map_err(err)?
+        .map(|entry| entry.map(|entry| entry.name.to_string()).map_err(err))
+        .collect()
 }

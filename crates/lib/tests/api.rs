@@ -78,32 +78,3 @@ fn serialize_with_no_dedup_matches_serialize() {
     let b = brarchive::serialize_with(data, SerializeOptions { dedup: false }).unwrap();
     assert_eq!(a, b);
 }
-
-#[test]
-fn list_returns_entry_names() {
-    let bytes = brarchive::serialize([("a.json", "1"), ("b.json", "2"), ("c.json", "3")]).unwrap();
-    let names = brarchive::list(&bytes).unwrap();
-    assert_eq!(names, vec!["a.json", "b.json", "c.json"]);
-}
-
-#[test]
-fn list_empty_archive() {
-    let bytes = brarchive::serialize::<Vec<(&str, &str)>, _, _>(vec![]).unwrap();
-    let names = brarchive::list(&bytes).unwrap();
-    assert!(names.is_empty());
-}
-
-#[test]
-fn list_does_not_require_reading_content() {
-    // list should work even when content bytes are not present (header + descriptors only).
-    // Verify that list() and deserialize() agree on names.
-    let data = vec![
-        ("x.json".to_string(), "hello".to_string()),
-        ("y.json".to_string(), "world".to_string()),
-    ];
-    let bytes = brarchive::serialize(data).unwrap();
-    let names = brarchive::list(&bytes).unwrap();
-    let map: std::collections::BTreeMap<String, Vec<u8>> = brarchive::deserialize(&bytes).unwrap();
-    let map_keys: Vec<&str> = map.keys().map(String::as_str).collect();
-    assert_eq!(names, map_keys);
-}

@@ -213,8 +213,8 @@ fn fixture_pack_has_expected_layout() {
     // decode tests below.
     for archive in ARCHIVES {
         let bytes = fs::read(fixture_pack().join(archive)).unwrap();
-        let names = brarchive::list(&bytes).unwrap();
-        assert!(!names.is_empty(), "{archive} holds no entries");
+        let entries = brarchive::entries(&bytes).unwrap();
+        assert!(entries.len() > 0, "{archive} holds no entries");
     }
 }
 

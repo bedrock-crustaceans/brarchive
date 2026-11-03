@@ -107,20 +107,6 @@ where
     Ok(buf)
 }
 
-/// List entry names in a .brarchive file without reading content.
-///
-/// The header and the entry table are bounds-checked: a truncated archive, or
-/// one whose entry count runs past its end, is an error. Content ranges are not
-/// checked, so an archive cut off after its entry table still lists.
-pub fn list(data: &[u8]) -> Result<Vec<String>, BrArchiveError> {
-    let header = v1::read_header(data)?;
-    let (table, _) = v1::entry_table(data, &header)?;
-    table
-        .chunks_exact(v1::DESCRIPTOR_LEN)
-        .map(|descriptor| v1::read_entry_descriptor(descriptor).map(|e| e.name.to_string()))
-        .collect()
-}
-
 /// One entry of a .brarchive file: its name and where its contents sit in the
 /// archive bytes.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

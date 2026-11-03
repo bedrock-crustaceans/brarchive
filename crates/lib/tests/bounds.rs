@@ -2,6 +2,7 @@
 //! out-of-bounds read.
 
 use brarchive::error::BrArchiveError;
+use brarchive::Entry;
 use std::collections::BTreeMap;
 
 /// The u32 entry count lives at bytes 8..12 of the header.
@@ -20,11 +21,16 @@ fn deserialize(bytes: &[u8]) -> Result<BTreeMap<String, Vec<u8>>, BrArchiveError
     brarchive::deserialize(bytes)
 }
 
+/// The first item `entries` yields for `bytes`, whose header and table are sound.
+fn first_entry(bytes: &[u8]) -> Result<Entry<'_>, BrArchiveError> {
+    brarchive::entries(bytes).unwrap().next().unwrap()
+}
+
 #[test]
-fn list_truncated_header_is_an_error() {
+fn entries_truncated_header_is_an_error() {
     let bytes = one_entry_archive();
     assert!(matches!(
-        brarchive::list(&bytes[..10]),
+        brarchive::entries(&bytes[..10]),
         Err(BrArchiveError::TruncatedHeader(10))
     ));
 }
@@ -39,11 +45,11 @@ fn deserialize_truncated_header_is_an_error() {
 }
 
 #[test]
-fn list_count_past_buffer_is_an_error() {
+fn entries_count_past_buffer_is_an_error() {
     let mut bytes = one_entry_archive();
     bytes[COUNT_FIELD..COUNT_FIELD + 4].copy_from_slice(&1000u32.to_le_bytes());
     assert!(matches!(
-        brarchive::list(&bytes),
+        brarchive::entries(&bytes),
         Err(BrArchiveError::TruncatedEntryTable(1000))
     ));
 }
@@ -59,40 +65,45 @@ fn deserialize_count_past_buffer_is_an_error() {
 }
 
 #[test]
-fn list_descriptor_cut_inside_name_is_an_error() {
+fn entries_descriptor_cut_inside_name_is_an_error() {
     let bytes = one_entry_archive();
     assert!(matches!(
-        brarchive::list(&bytes[..FIRST_DESCRIPTOR + 1]),
+        brarchive::entries(&bytes[..FIRST_DESCRIPTOR + 1]),
         Err(BrArchiveError::TruncatedEntryTable(1))
     ));
 }
 
 #[test]
-fn list_name_length_past_maximum_is_an_error() {
+fn entries_name_length_past_maximum_is_an_error() {
     let mut bytes = one_entry_archive();
     bytes[FIRST_DESCRIPTOR] = 248;
     assert!(matches!(
-        brarchive::list(&bytes),
+        first_entry(&bytes),
         Err(BrArchiveError::EntryNameTooLong(248))
     ));
 }
 
 #[test]
-fn list_non_utf8_name_is_an_error() {
+fn entries_non_utf8_name_is_an_error() {
     let mut bytes = one_entry_archive();
     bytes[FIRST_DESCRIPTOR + 1] = 0xFF;
     assert!(matches!(
-        brarchive::list(&bytes),
+        first_entry(&bytes),
         Err(BrArchiveError::Utf8Error(_))
     ));
 }
 
 #[test]
-fn list_does_not_check_content_ranges() {
-    // A manifest stub or a table read without its data block still lists.
-    let bytes = one_entry_archive();
-    let table_only = &bytes[..FIRST_DESCRIPTOR + 256];
-    assert_eq!(brarchive::list(table_only).unwrap(), vec!["k"]);
+fn entries_range_past_buffer_is_an_error_and_iteration_goes_on() {
+    let mut bytes = brarchive::serialize([("k", "v"), ("ok", "fine")]).unwrap();
+    let len = FIRST_DESCRIPTOR + LEN_FIELD;
+    bytes[len..len + 4].copy_from_slice(&1000u32.to_le_bytes());
+    let items: Vec<_> = brarchive::entries(&bytes).unwrap().collect();
+    assert_eq!(
+        items[0],
+        Err(BrArchiveError::EntryOutOfBounds("k".to_string()))
+    );
+    assert!(matches!(&items[1], Ok(Entry { name: "ok", .. })));
 }
 
 #[test]
