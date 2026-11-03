@@ -1,33 +1,57 @@
 use crate::error::BrArchiveError;
 use crate::versions::{EntryDescriptor, Header, ENTRY_NAME_LEN_MAX, MAGIC, VERSIONS};
-use byteorder::{LittleEndian, ReadBytesExt};
-use std::io::{Cursor, Read, Seek};
+use byteorder::{ByteOrder, LittleEndian};
+use std::ops::Range;
 
-pub(crate) fn read_header(buf: &mut Cursor<&[u8]>) -> Result<Header, BrArchiveError> {
-    let magic = buf.read_u64::<LittleEndian>()?;
+/// Size of the archive header: u64 magic, u32 entry count, u32 version.
+pub(crate) const HEADER_LEN: usize = 16;
+/// Size of one entry descriptor in the entry table.
+pub(crate) const DESCRIPTOR_LEN: usize = 256;
+/// Position of the u32 content offset inside a descriptor; the u32 length follows.
+const CONTENTS_OFFSET_FIELD: usize = 1 + ENTRY_NAME_LEN_MAX;
+
+pub(crate) fn read_header(data: &[u8]) -> Result<Header, BrArchiveError> {
+    let header = data
+        .get(..HEADER_LEN)
+        .ok_or(BrArchiveError::TruncatedHeader(data.len()))?;
+    let magic = LittleEndian::read_u64(&header[0..8]);
     if magic != MAGIC {
         return Err(BrArchiveError::MagicMismatch(magic));
     }
-    let entries = buf.read_u32::<LittleEndian>()?;
-    let version = buf.read_u32::<LittleEndian>()?;
+    let entries = LittleEndian::read_u32(&header[8..12]);
+    let version = LittleEndian::read_u32(&header[12..16]);
     if !VERSIONS.contains(&version) {
         return Err(BrArchiveError::UnsupportedVersion(version));
     }
     Ok(Header { entries, version })
 }
 
-pub(crate) fn read_entry_descriptor<'a>(
-    buf: &mut Cursor<&'a [u8]>,
-) -> Result<EntryDescriptor<'a>, BrArchiveError> {
-    let name_len = buf.read_u8()?;
-    if name_len as usize > ENTRY_NAME_LEN_MAX {
-        return Err(BrArchiveError::EntryNameTooLong(name_len as usize));
+/// The entry table of `data`, checked to fit inside it, and the position where
+/// the content block starts.
+pub(crate) fn entry_table<'a>(
+    data: &'a [u8],
+    header: &Header,
+) -> Result<(&'a [u8], usize), BrArchiveError> {
+    let truncated = || BrArchiveError::TruncatedEntryTable(header.entries);
+    let data_start = (header.entries as usize)
+        .checked_mul(DESCRIPTOR_LEN)
+        .and_then(|table_len| table_len.checked_add(HEADER_LEN))
+        .ok_or_else(truncated)?;
+    let table = data.get(HEADER_LEN..data_start).ok_or_else(truncated)?;
+    Ok((table, data_start))
+}
+
+/// Read one descriptor from a `DESCRIPTOR_LEN`-byte slice of the entry table.
+pub(crate) fn read_entry_descriptor(
+    descriptor: &[u8],
+) -> Result<EntryDescriptor<'_>, BrArchiveError> {
+    let name_len = descriptor[0] as usize;
+    if name_len > ENTRY_NAME_LEN_MAX {
+        return Err(BrArchiveError::EntryNameTooLong(name_len));
     }
-    let current_pos = buf.position() as usize;
-    let name = std::str::from_utf8(&buf.get_ref()[current_pos..current_pos + name_len as usize])?;
-    buf.set_position((current_pos + ENTRY_NAME_LEN_MAX) as u64);
-    let contents_offset = buf.read_u32::<LittleEndian>()?;
-    let contents_len = buf.read_u32::<LittleEndian>()?;
+    let name = std::str::from_utf8(&descriptor[1..1 + name_len])?;
+    let contents_offset = LittleEndian::read_u32(&descriptor[CONTENTS_OFFSET_FIELD..]);
+    let contents_len = LittleEndian::read_u32(&descriptor[CONTENTS_OFFSET_FIELD + 4..]);
     Ok(EntryDescriptor {
         name,
         contents_offset,
@@ -35,14 +59,22 @@ pub(crate) fn read_entry_descriptor<'a>(
     })
 }
 
-pub(crate) fn read_entry_contents(
-    buf: &mut Cursor<&[u8]>,
+/// The byte range of `entry`'s contents in an archive of `data_len` bytes whose
+/// content block starts at `data_start`.
+pub(crate) fn entry_contents_range(
     entry: &EntryDescriptor,
-) -> Result<Vec<u8>, BrArchiveError> {
-    let start_offset = buf.stream_position()?;
-    buf.set_position(start_offset + entry.contents_offset as u64);
-    let mut contents = vec![0u8; entry.contents_len as usize];
-    buf.read_exact(&mut contents)?;
-    buf.set_position(start_offset);
-    Ok(contents)
+    data_start: usize,
+    data_len: usize,
+) -> Result<Range<usize>, BrArchiveError> {
+    let out_of_bounds = || BrArchiveError::EntryOutOfBounds(entry.name.to_string());
+    let start = data_start
+        .checked_add(entry.contents_offset as usize)
+        .ok_or_else(out_of_bounds)?;
+    let end = start
+        .checked_add(entry.contents_len as usize)
+        .ok_or_else(out_of_bounds)?;
+    if end > data_len {
+        return Err(out_of_bounds());
+    }
+    Ok(start..end)
 }

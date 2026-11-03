@@ -14,6 +14,12 @@ pub enum BrArchiveError {
     TooManyEntries(usize),
     #[error("Content block exceeds 4 GiB limit")]
     ContentTooLarge,
+    #[error("Archive is {0} bytes, shorter than the 16-byte header")]
+    TruncatedHeader(usize),
+    #[error("Entry table of {0} entries runs past the end of the archive")]
+    TruncatedEntryTable(u32),
+    #[error("Contents of entry \"{0}\" run past the end of the archive")]
+    EntryOutOfBounds(String),
     #[error(transparent)]
     Utf8Error(#[from] Utf8Error),
     #[error(transparent)]
@@ -29,6 +35,9 @@ impl PartialEq for BrArchiveError {
             (Self::EntryNameTooLong(a), Self::EntryNameTooLong(b)) => a == b,
             (Self::TooManyEntries(a), Self::TooManyEntries(b)) => a == b,
             (Self::ContentTooLarge, Self::ContentTooLarge) => true,
+            (Self::TruncatedHeader(a), Self::TruncatedHeader(b)) => a == b,
+            (Self::TruncatedEntryTable(a), Self::TruncatedEntryTable(b)) => a == b,
+            (Self::EntryOutOfBounds(a), Self::EntryOutOfBounds(b)) => a == b,
             (Self::IOError(_), Self::IOError(_)) => false,
             _ => false,
         }

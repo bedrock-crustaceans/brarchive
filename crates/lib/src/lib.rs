@@ -2,7 +2,7 @@ use crate::error::BrArchiveError;
 use crate::versions::v1;
 use crate::versions::{ENTRY_NAME_LEN_MAX, MAGIC, VERSIONS};
 use byteorder::{LittleEndian, WriteBytesExt};
-use std::io::{Cursor, Write};
+use std::io::Write;
 
 pub mod error;
 pub(crate) mod versions;
@@ -105,11 +105,16 @@ where
 }
 
 /// List entry names in a .brarchive file without reading content.
+///
+/// The header and the entry table are bounds-checked: a truncated archive, or
+/// one whose entry count runs past its end, is an error. Content ranges are not
+/// checked, so an archive cut off after its entry table still lists.
 pub fn list(data: &[u8]) -> Result<Vec<String>, BrArchiveError> {
-    let mut buf = Cursor::new(data);
-    let header = v1::read_header(&mut buf)?;
-    (0..header.entries)
-        .map(|_| v1::read_entry_descriptor(&mut buf).map(|e| e.name.to_string()))
+    let header = v1::read_header(data)?;
+    let (table, _) = v1::entry_table(data, &header)?;
+    table
+        .chunks_exact(v1::DESCRIPTOR_LEN)
+        .map(|descriptor| v1::read_entry_descriptor(descriptor).map(|e| e.name.to_string()))
         .collect()
 }
 
@@ -133,17 +138,14 @@ pub fn deserialize<C>(data: &[u8]) -> Result<C, BrArchiveError>
 where
     C: FromIterator<(String, Vec<u8>)>,
 {
-    let mut buf = Cursor::new(data);
-    let header = v1::read_header(&mut buf)?;
-    let mut descriptors = Vec::with_capacity(header.entries as usize);
-    for _ in 0..header.entries {
-        descriptors.push(v1::read_entry_descriptor(&mut buf)?);
-    }
-    descriptors
-        .into_iter()
-        .map(|entry| {
-            let contents = v1::read_entry_contents(&mut buf, &entry)?;
-            Ok((entry.name.to_string(), contents))
+    let header = v1::read_header(data)?;
+    let (table, data_start) = v1::entry_table(data, &header)?;
+    table
+        .chunks_exact(v1::DESCRIPTOR_LEN)
+        .map(|descriptor| {
+            let entry = v1::read_entry_descriptor(descriptor)?;
+            let range = v1::entry_contents_range(&entry, data_start, data.len())?;
+            Ok((entry.name.to_string(), data[range].to_vec()))
         })
         .collect()
 }
