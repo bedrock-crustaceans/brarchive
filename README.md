@@ -2,7 +2,7 @@
 
 [![Crates.io Version](https://img.shields.io/crates/v/brarchive)](https://crates.io/crates/brarchive)
 [![Crates.io Total Downloads](https://img.shields.io/crates/d/brarchive)](https://crates.io/crates/brarchive)
-[![Crates.io MSRV (version)](https://img.shields.io/crates/msrv/brarchive/0.4.1)](https://crates.io/crates/brarchive)
+[![Crates.io MSRV (version)](https://img.shields.io/crates/msrv/brarchive/0.5.0)](https://crates.io/crates/brarchive)
 [![Crates.io License](https://img.shields.io/crates/l/brarchive)](https://github.com/theaddonn/brarchive-rs/blob/main/LICENSE)
 
 A library and CLI for the **Bedrock Archive** (`.brarchive`) format, the bundling format
