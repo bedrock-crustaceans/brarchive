@@ -109,6 +109,12 @@ Deno.test("rejects invalid archives", () => {
   assertThrows(() => deserialize(new Uint8Array()));
 });
 
+Deno.test("rejects an archive whose entry table runs past its end", () => {
+  const bytes = serialize({ "entity.json": "{}" }).subarray(0, 17);
+  assertThrows(() => list(bytes), Error, "Entry table");
+  assertThrows(() => deserialize(bytes), Error, "Entry table");
+});
+
 Deno.test("reads archives produced by the Rust library", () => {
   const bytes = readFixture(fixtures, "entity.brarchive");
   const names = list(bytes);
