@@ -3,6 +3,7 @@ use std::str::Utf8Error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum BrArchiveError {
     #[error("Magic Sequence Mismatch (expected {MAGIC}, got {0})")]
     MagicMismatch(u64),
