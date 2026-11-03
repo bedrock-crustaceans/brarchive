@@ -45,6 +45,7 @@ pub(crate) fn entry_table<'a>(
 pub(crate) fn read_entry_descriptor(
     descriptor: &[u8],
 ) -> Result<EntryDescriptor<'_>, BrArchiveError> {
+    debug_assert_eq!(descriptor.len(), DESCRIPTOR_LEN);
     let name_len = descriptor[0] as usize;
     if name_len > ENTRY_NAME_LEN_MAX {
         return Err(BrArchiveError::EntryNameTooLong(name_len));
